@@ -1,0 +1,132 @@
+# =============================
+# OS-Specific System Files
+# =============================
+# macOS Finder metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Windows junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =============================
+# Editor + IDE Artifacts
+# =============================
+# Vim/Neovim swap
+*.swp
+*.swo
+*.swn
+
+# Backups
+*.bak
+
+# Temp files
+*~
+*.tmp
+
+# Log files
+*.log
+
+# VS Code settings 
+.vscode/
+.idea/
+
+# =============================
+# Programming Artifacts
+# =============================
+# Python bytecode
+__pycache__/
+__pypackages__/
+*.py[cod]
+*$py.class
+.python-version
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Distribution/packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# MyPy static type checker cache
+.mypy_cache/
+
+# Local wheel build artifacts
+pip-wheel-metadata/
+
+# PyInstaller
+*.spec
+
+# Unit tests/coverage reports
+.coverage*
+.tox/
+.nox/
+pytest_cache/
+htmlcov/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# =============================
+# Neovim Specific
+# =============================
+# Plugin/pack manager stuff
+plugged/
+site/pack/*/start/
+site/pack/*/opt/
+
+# Session/cache/history files (if not versioned)
+shada/
+*.shada
+nvimlog
+
+# Lazy.nvim (optional if you want a clean repo)
+~/.local/share/nvim/lazy/
+
+# LSP/treesitter logs & data
+*.tsdump
+*.tslog
+tsserver.log
+nvim_lsp.log
+
+# =============================
+# Shell / Zsh
+# =============================
+.zsh_history
+.zsh_sessions
+.zshrc.pre-oh-my-zsh
+
+# =============================
+# Secrets & Environment
+# =============================
+.env
+.env.*
+.secrets/
+credentials/
+private_keys/
+id_rsa*
+*.gpg
+
+# =============================
+# Misc
+# =============================
+*.iso
+*.img
+*.tar
+*.zip
+*.gz
+*.rar
+
+# Ignore Git itself (sometimes in nested submodules)
+.git/
+
+# If using Homebrew config sync
+.Brewfile.lock.json

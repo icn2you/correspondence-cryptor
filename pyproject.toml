@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "correspondence-cryptor"
+version = "0.1.0"
+requires-python = ">=3.9"
+description = "Caesar cipher decoder"
+readme = "README.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["correspondence_cryptor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
