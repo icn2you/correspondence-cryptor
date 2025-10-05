@@ -1,6 +1,17 @@
 import unittest
 
-from correspondence_cryptor import decode_caesar_cipher, encode_caesar_cipher, shift
+from correspondence_cryptor import decode_caesar_cipher, encode_caesar_cipher, read_received_messages, shift
+
+
+class TestMessageLoading(unittest.TestCase):
+    def test_load_returns_list_of_dicts(self):
+        msgs = read_received_messages("recd_msgs.json")
+        self.assertIsInstance(msgs, list)
+        self.assertTrue(all(isinstance(m, dict) for m in msgs))
+
+    def test_load_returns_empty_list_for_missing_file(self):
+        msgs = read_received_messages("non_existent.json")
+        self.assertEqual(msgs, [])
 
 
 class TestCorrespondenceCryptorDecode(unittest.TestCase):
@@ -56,7 +67,6 @@ class TestCorrespondenceCryptorEncode(unittest.TestCase):
         self.assertEqual(encode_caesar_cipher("ZzAa", 1), "YyZz")
 
 
-
 class TestRoundTrip(unittest.TestCase):
     def test_round_trip(self):
         msg = "Hello, World!"
@@ -66,6 +76,7 @@ class TestRoundTrip(unittest.TestCase):
                     decode_caesar_cipher(encode_caesar_cipher(msg, k), k),
                     msg,
                 )
+
 
 class TestWrapCases(unittest.TestCase):
     def test_wrap_pairs(self):
