@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### ✨ Added
 - Added `encode_caesar_cipher()` function for Caesar cipher encoding.
-- Added encoding unit tests (15 total passing tests).
+- Improved test coverage for encoding functionality.
 - Added round-trip encryption/decryption validation to the unit test suite.
 - Added `.envrc` support for automatic virtualenv activation.
 - Enhanced project with `Makefile`, `pytest.ini`, and `pytest-watch` integration.
@@ -27,3 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🧹 Changed
 - Refactored offset normalization logic into `shift()` function for consolidated handling.
+
+## [0.3.0] - 2025-10-05
+> ✨ Added message loader with data normalization and robust tests.
+
+### ✨ Added
+- Implemented `read_received_messages()` function to load external JSON data and normalize it into a list of message objects.
+- Improved test coverage for loading functionality, including the handling of a missing data file.
