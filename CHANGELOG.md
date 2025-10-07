@@ -34,3 +34,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### ✨ Added
 - Implemented `read_received_messages()` function to load external JSON data and normalize it into a list of message objects.
 - Improved test coverage for loading functionality, including the handling of a missing data file.
+
+## [0.4.0] - 2025-10-06
+> ✨ Added typed JSON parsing, decode guard, and expanded schema support.
+
+### ✨ Added
+- Defined `Meta` and `Message` `TypedDict` schemas for structured message metadata and payloads.
+- Implemented parsing and normalization of external JSON into strongly typed message objects with UTF-8 decoding and improved error handling.
+- Added `decode_if_able()` function to conditionally decode Caesar-ciphered messages based on metadata and offset validation.
+- Introduced cipher validation with case-insensitive matching for `"caesar"`.
+- Expanded package exports in `__init__.py` to include new types, constants, and helper functions.
+
+### 🧹 Changed
+- Updated `shift()` function to handle ASCII-only input, normalize offsets, and preserve case consistently.
+- Refined decode logic to reject unsupported ciphers and provide helpful error messages when offsets are missing.
+- Updated sample `recd_msgs.json` to match the new schema, including the addition of a valid offset for decoding.
