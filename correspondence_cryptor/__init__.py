@@ -1,20 +1,45 @@
 """
-correspondence_cryptor package
+correspondence_cryptor
+======================
 
-A simple cryptography demo focused on decoding messages with a Caesar cipher.
+Educational Caesar-cipher toolkit with encoding/decoding and
+brute-force key recovery using χ² and ETAOIN heuristics.
+
+Public API:
+- Types: Meta, Message
+- Core: encode_caesar_cipher, decode_caesar_cipher, decode_if_able,
+        read_received_messages, brute_force_offset
+- Constants: ALPHABET, ETAOIN, FILEPATH
 """
 
-from .core import ALPHABET, FILEPATH, Meta, Message, is_int_but_not_bool, shift, decode_caesar_cipher, encode_caesar_cipher, decode_if_able, read_received_messages # noqa: F401
+from .core import (
+    # Constants (public)
+    ALPHABET,
+    ETAOIN,
+    FILEPATH,
+    # Types
+    Meta,
+    Message,
+    # Core functions (public)
+    decode_caesar_cipher,
+    encode_caesar_cipher,
+    read_received_messages,
+    brute_force_offset,
+    decode_if_able,
+)  # noqa: F401
 
 __all__ = [
+    # Constants
     "ALPHABET",
+    "ETAOIN",
     "FILEPATH",
+    # Types
     "Meta",
     "Message",
-    "is_int_but_not_bool",
-    "shift",
+    # Core
     "decode_caesar_cipher",
     "encode_caesar_cipher",
-    "decode_if_able",
     "read_received_messages",
+    "brute_force_offset",
+    "decode_if_able",
 ]
