@@ -49,3 +49,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Updated `shift()` function to handle ASCII-only input, normalize offsets, and preserve case consistently.
 - Refined decode logic to reject unsupported ciphers and provide helpful error messages when offsets are missing.
 - Updated sample `recd_msgs.json` to match the new schema, including the addition of a valid offset for decoding.
+
+## [0.5.0] - 2025-10-09
+> 🔓 Added brute-force key recovery with χ² + ETAOIN tie-break.
+
+### ✨ Added
+- Implemented `brute_force_offset()` function to guess unknown Caesar offsets by minimizing χ² against expected English letter frequencies.
+- Implemented ETAOIN tie-break functionality: when candidates are within 10% of the best χ², choose the one with the highest (E+T+A+O+I+N)/N rate.
+- Added `LOW_CONFIDENCE = -1` sentinel when a message has no alphabetic characters (`N == 0`).
+- Introduced helper functions `calc_chi_squared()`, `calc_etaoin_rate()`, and `calc_observed_frequencies()` that use `Decimal` for precision.
+- Introduced initial `mypy.ini` configuration for strict static type checking.
+- Enhanced module-level docstring with examples, type hints, and portfolio context.
+
+### 🧹 Changed
+- Enhanced CLI flow such that it brute-forces the key when an encrypted message has an unknown offset and updates `meta["offset"]` once found.
+- Strengthened type hints and container annotations; ensured Decimal-aware summations and full MyPy compliance.
+- Updated public exports in `__init__.py` (constants, types, and new API).
+
+### ✅ Tests
+- Added and expanded test coverage for brute-force recovery, low-confidence behavior, and `decode_if_able()` function.
+- Utilized comprehensive quality belt, including Black, Ruff, MyPy, and Pytest; source code passed all tests.
