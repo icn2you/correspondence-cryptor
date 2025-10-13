@@ -69,3 +69,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### ✅ Tests
 - Added and expanded test coverage for brute-force recovery, low-confidence behavior, and `decode_if_able()` function.
 - Utilized comprehensive quality belt, including Black, Ruff, MyPy, and Pytest; source code passed all tests.
+
+## [0.6.0] - 2025-10-11
+> ✨ Added heuristics + blended tie-break (BREAKING: `decode_if_able`→`try_decode`; `etaoin_rate`→float)
+
+### ✨ Added
+- Added vowel-ratio heuristic (Gaussian μ≈0.41, σ≈0.06).
+- Added keyword-hit heuristic (saturation + diversity bonus).
+- Implemented blended tie-break (ETAOIN 0.40, vowel 0.30, keywords 0.30).
+- Added verbose per-key diagnostics and top-3 results with `return_all=True`.
+- Implemented `DecryptionResult` dataclass for top-N reporting.
+- Introduced `clamp_01()` helper function and internal `_blend_scores()` utility.
+
+### 🧹 Changed
+- Enhanced tie-break functionality to use a blended heuristic when χ² candidates are within 10%.
+- Refactored `compute_etaoin_rate()` function to return a `float` in [0,1] (previously `Decimal`).
+- Renamed `decode_if_able()` function to `try_decode()` (public API and exports).
+- Moved coverage configuration to `pyproject.toml`; excluded CLI/demo from coverage; marked defensive branches.
+
+### 🧪 Tests
+- Added unit tests for vowel ratio, keyword hits, blended tie-break, verbose/`return_all=True`, and `log_debug()` function.
+- Enabled doctests; achieved overall test coverage of ~94% on Python 3.13.
+
+### ⚠️ Breaking
+- Renamed `decode_if_able()` function → `try_decode()` (updated imports and callers).
+- Changed `compute_etaoin_rate()` return type to `float`.
