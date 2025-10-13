@@ -1,3 +1,20 @@
+"""
+test_core.py
+============
+unit tests for correspondence_cryptor.core
+
+Covers:
+- χ² calc; letter frequencies; encode/decode roundtrips
+- Heuristics: ETAOIN (float), vowel-ratio score, keyword hits, clamp_01
+- Brute force: finds known shifts; N==0 policy
+- Tie-break: blended heuristic (ETAOIN + vowel + keywords)
+
+Version: 0.6.0 (2025-10-11)
+How to run: `python -m unittest -v` or `pytest -q`
+"""
+
+import contextlib
+import io
 import unittest
 from decimal import Decimal
 
@@ -6,15 +23,22 @@ from correspondence_cryptor import (
     encode_caesar_cipher,
     read_received_messages,
     brute_force_offset,
-    decode_if_able,
+    try_decode,
 )
 
 from correspondence_cryptor.core import (
-    LOW_CONFIDENCE,
+    DecryptionResult,
+    CERTAINTY,
     calc_chi_squared,
-    calc_etaoin_rate,
-    calc_observed_frequencies,
+    clamp_01,
+    compute_etaoin_rate,
+    compute_letter_frequencies,
+    compute_keyword_hits,
+    compute_vowel_ratio,
+    compute_evidence,
+    break_tie_between_candidates,
     shift,
+    log_debug,
 )
 
 
@@ -27,27 +51,95 @@ class TestChiSquared(unittest.TestCase):
             calc_chi_squared({"A": Decimal("3")}, Decimal("2"))
 
 
+class TestClamp01(unittest.TestCase):
+    def test_clamps_below_zero(self) -> None:
+        self.assertEqual(clamp_01(-1.5), 0.0)
+
+    def test_clamps_above_one(self) -> None:
+        self.assertEqual(clamp_01(1.5), 1.0)
+
+    def test_passes_through_in_range(self) -> None:
+        self.assertEqual(clamp_01(0.42), 0.42)
+
+
 class TestEtaoinRate(unittest.TestCase):
     def test_etaoin_zero_when_N_zero(self) -> None:
-        self.assertEqual(calc_etaoin_rate({}, Decimal("0")), Decimal("0"))
+        self.assertEqual(compute_etaoin_rate({}, Decimal("0")), Decimal("0"))
 
     def test_etaoin_basic(self) -> None:
-        rate = calc_etaoin_rate({"E": Decimal("3"), "T": Decimal("2")}, Decimal("10"))
+        rate = compute_etaoin_rate(
+            {"E": Decimal("3"), "T": Decimal("2")}, Decimal("10")
+        )
         self.assertEqual(rate, Decimal("0.500000"))  # (3+2)/10, quantized to 6dp
 
 
-class TestObservedFrequencies(unittest.TestCase):
+class TestKeywordHits(unittest.TestCase):
+    def test_zero_hits(self) -> None:
+        tokens = ["xyz", "foo", "bar"]
+        self.assertEqual(compute_keyword_hits(tokens), 0.0)
+
+    def test_frequency_and_diversity(self) -> None:
+        # 5 hits (distinct >= 5) → saturation + bonus
+        tokens = ["the", "and", "of", "to", "in"]
+        score = compute_keyword_hits(tokens)
+        # 1 - exp(-5/4) + 0.05 ≈ 0.763495 → rounded 6dp
+        self.assertAlmostEqual(score, 0.763495, places=6)
+
+    def test_repeated_hits_increase_score(self) -> None:
+        # frequency should matter (not just set membership)
+        base = compute_keyword_hits(["the"])
+        more = compute_keyword_hits(["the", "the", "the", "and"])
+        self.assertGreater(more, base)
+
+
+class TestLetterFrequencies(unittest.TestCase):
     def test_empty_and_whitespace(self) -> None:
-        self.assertEqual(calc_observed_frequencies(""), {})
-        self.assertEqual(calc_observed_frequencies("   \n\t"), {})
+        self.assertEqual(compute_letter_frequencies(""), {})
+        self.assertEqual(compute_letter_frequencies("   \n\t"), {})
 
     def test_case_insensitive_counts(self) -> None:
-        freqs = calc_observed_frequencies("AaBbZz!!")
+        freqs = compute_letter_frequencies("AaBbZz!!")
         self.assertEqual(freqs["A"], Decimal("2"))
         self.assertEqual(freqs["B"], Decimal("2"))
         self.assertEqual(freqs["Z"], Decimal("2"))
         # non-mentioned letters should be zero
         self.assertEqual(freqs["C"], Decimal("0"))
+
+
+class TestVowelRatio(unittest.TestCase):
+    def test_center_ratio_scores_near_one(self) -> None:
+        # N=100, vowels=41 → ratio exactly 0.41 → exp(0) = 1.0
+        vowels = {
+            "A": Decimal("20"),
+            "E": Decimal("21"),
+            "I": Decimal("0"),
+            "O": Decimal("0"),
+            "U": Decimal("0"),
+        }
+        score = compute_vowel_ratio(vowels, Decimal("100"))
+        self.assertEqual(score, 1.0)
+
+    def test_far_from_center_scores_small(self) -> None:
+        # ratio 0.20 (far from 0.41) should be very small
+        vowels = {"A": Decimal("10"), "E": Decimal("10")}
+        score = compute_vowel_ratio(vowels, Decimal("100"))
+        self.assertLess(score, 0.01)
+
+
+class TestComputeEvidence(unittest.TestCase):
+    def test_evidence_edges(self) -> None:
+        self.assertGreater(compute_evidence(1.0), 0.9)
+        self.assertLess(compute_evidence(-1.0), 0.1)
+
+
+class TestTieBreakBlend(unittest.TestCase):
+    def test_composite_prefers_higher_blend(self) -> None:
+        # candidates: (key, chi2, etaoin, vowel_score, keyword_score)
+        # same chi2 → tie-break relies on blended heuristic
+        cand1 = (3, Decimal("10.0"), 0.60, 0.90, 0.20)  # strong vowel
+        cand2 = (7, Decimal("10.0"), 0.70, 0.60, 0.40)  # stronger eta+kw
+        winner = break_tie_between_candidates([cand1, cand2])
+        self.assertEqual(winner, 7)
 
 
 class TestCorrespondenceCryptorDecode(unittest.TestCase):
@@ -152,37 +244,87 @@ class TestBruteForce(unittest.TestCase):
     def test_no_letters_low_confidence_default(self) -> None:
         cipher = "12345!!!   --  "
         guessed = brute_force_offset(cipher)
-        self.assertEqual(guessed, LOW_CONFIDENCE)  # current policy: return 0 on N==0
+        self.assertEqual(guessed, CERTAINTY.low)  # current policy: return 0 on N==0
 
 
-class TestDecodeIfAble(unittest.TestCase):
+class TestVerboseAndReturnAll(unittest.TestCase):
+    def test_bruteforce_return_all_and_verbose(self) -> None:
+        """When return_all=True, we expect per-candidate lines but no final summary line."""
+        msg = "The quick brown fox jumps over the lazy dog."
+        for k in (0, 7, 13):
+            with self.subTest(k=k):
+                cipher = encode_caesar_cipher(msg, k)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    results = brute_force_offset(cipher, return_all=True, verbose=True)
+                out = buf.getvalue()
+                # per-candidate lines exist
+                self.assertIn("[k=00]", out)
+                # summary line is NOT printed in the return_all=True path
+                self.assertNotIn("[DEBUG] best=", out)
+                # and we get the top-3 results
+                self.assertIsInstance(results, list)
+                self.assertEqual(len(results), 3)
+                self.assertTrue(all(isinstance(r, DecryptionResult) for r in results))
+
+    def test_bruteforce_verbose_summary_when_not_return_all(self) -> None:
+        """When return_all=False, the summary line should be printed."""
+        msg = "The quick brown fox jumps over the lazy dog."
+        cipher = encode_caesar_cipher(msg, 7)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _ = brute_force_offset(cipher, verbose=True)  # default return_all=False
+        out = buf.getvalue()
+        self.assertIn("[DEBUG] best=", out)
+
+    def test_log_debug_prints(self) -> None:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            log_debug("hello debug")
+        self.assertIn("hello debug", buf.getvalue())
+
+
+class TestThreeWayTieBreak(unittest.TestCase):
+    def test_three_candidate_blended_tie(self) -> None:
+        # Construct three candidates with same chi2 → blended heuristic should decide.
+        # (key, chi2, etaoin, vowel, keyword)
+        chi = Decimal("10.0")
+        c1 = (3, chi, 0.60, 0.80, 0.20)  # good vowel
+        c2 = (7, chi, 0.72, 0.60, 0.40)  # strong eta+kw
+        c3 = (9, chi, 0.65, 0.70, 0.30)  # middling
+        winner = break_tie_between_candidates([c1, c2, c3])
+        # With weights 0.40/0.30/0.30, c2 should win.
+        self.assertEqual(winner, 7)
+
+
+class TestTryDecode(unittest.TestCase):
     def test_plaintext_passthrough_when_not_encoded(self) -> None:
         meta = {"encoded": False, "offset": None, "cipher": "Caesar"}
-        self.assertEqual(decode_if_able("Hello, World!", meta), "Hello, World!")
+        self.assertEqual(try_decode("Hello, World!", meta), "Hello, World!")
 
     def test_decodes_when_encoded_and_int_offset(self) -> None:
         meta = {"encoded": True, "offset": 3, "cipher": "caesar"}
-        self.assertEqual(decode_if_able("Ebiil, Tloia!", meta), "Hello, World!")
+        self.assertEqual(try_decode("Ebiil, Tloia!", meta), "Hello, World!")
 
     def test_does_not_decode_when_offset_unknown(self) -> None:
         meta = {"encoded": True, "offset": None, "cipher": "caesar"}
-        out = decode_if_able("Ebiil, Tloia!", meta)
+        out = try_decode("Ebiil, Tloia!", meta)
         self.assertIn("Unable to decode", out)
 
     def test_rejects_unsupported_cipher(self) -> None:
         meta = {"encoded": True, "offset": 3, "cipher": "vigenere"}
-        out = decode_if_able("Ebiil, Tloia!", meta)
+        out = try_decode("Ebiil, Tloia!", meta)
         self.assertIn("unsupported cipher", out)
 
     def test_offset_bool_is_not_treated_as_int(self) -> None:
         # bool is a subclass of int; we must *not* accept it
         meta = {"encoded": True, "offset": True, "cipher": "caesar"}
-        out = decode_if_able("Ebiil, Tloia!", meta)
+        out = try_decode("Ebiil, Tloia!", meta)
         self.assertIn("Unable to decode", out)
 
     def test_cipher_case_insensitive(self) -> None:
         meta = {"encoded": True, "offset": 3, "cipher": "CaEsAr"}
-        self.assertEqual(decode_if_able("Ebiil", meta), "Hello")
+        self.assertEqual(try_decode("Ebiil", meta), "Hello")
 
 
 if __name__ == "__main__":

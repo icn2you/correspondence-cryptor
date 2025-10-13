@@ -66,7 +66,8 @@ pip-wheel-metadata/
 *.spec
 
 # Unit tests/coverage reports
-.coverage*
+.coverage
+.coverage.*
 .tox/
 .nox/
 pytest_cache/

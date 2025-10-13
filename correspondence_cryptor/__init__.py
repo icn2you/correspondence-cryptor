@@ -25,7 +25,7 @@ from .core import (
     encode_caesar_cipher,
     read_received_messages,
     brute_force_offset,
-    decode_if_able,
+    try_decode,
 )  # noqa: F401
 
 __all__ = [
@@ -41,5 +41,5 @@ __all__ = [
     "encode_caesar_cipher",
     "read_received_messages",
     "brute_force_offset",
-    "decode_if_able",
+    "try_decode",
 ]
